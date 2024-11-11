@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чтение информации из графических файлов</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: #45a049;
+        }
+        td {
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        #result-table {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            th, td {
+                font-size: 13px;
+                padding: 10px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            button {
+                font-size: 14px;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Чтение информации из графических файлов</h1>
+
+<div id="controls">
+    <button id="addFiles">Добавить файлы</button>
+    <button id="addFolder">Добавить из папки</button>
+    <button id="removeItem">Удалить элемент</button>
+</div>
+
+<table id="result-table">
+    <thead>
+        <tr>
+            <th onclick="sortTable('name')">Имя</th>
+            <th onclick="sortTable('size')">Размер (пиксели)</th>
+            <th onclick="sortTable('resolution')">Разрешение (dpi)</th>
+            <th onclick="sortTable('colorDepth')">Глубина цвета</th>
+            <th onclick="sortTable('compression')">Сжатие</th>
+        </tr>
+    </thead>
+    <tbody id="result-body">
+    </tbody>
+</table>
+
+<script>
+let fileData = []; // Хранение всех данных о файлах
+
+document.getElementById('addFiles').addEventListener('click', function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = e => {
+        const files = e.target.files;
+        handleFiles(files);
+    };
+    input.click();
+});
+
+document.getElementById('addFolder').addEventListener('click', function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true;
+    input.onchange = e => {
+        const files = e.target.files;
+        handleFiles(files);
+    };
+    input.click();
+});
+
+document.getElementById('removeItem').addEventListener('click', function() {
+    if (fileData.length > 0) {
+        fileData.pop(); // Удаление последнего элемента
+        renderTable();  // Перерисовка таблицы
+    }
+});
+
+// Функция обработки файлов
+function handleFiles(files) {
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const fileName = file.name;
+                const imageSize = { width: img.width, height: img.height };
+                const resolution = 72;  // Предполагаем разрешение 72 dpi
+                const colorDepth = 24;  // Предполагаем цветовую глубину 24-бит
+                const compression = file.type.includes('jpeg') ? 'JPEG Compression' : 'No Compression';
+
+                // Добавление данных о файле в массив
+                fileData.push({
+                    name: fileName,
+                    size: `${imageSize.width} x ${imageSize.height}`,
+                    resolution: `${resolution} dpi`,
+                    colorDepth: `${colorDepth}-bit`,
+                    compression: compression,
+                    width: imageSize.width,
+                    height: imageSize.height
+                });
+
+                renderTable(); // Перерисовка таблицы после добавления файла
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+// Функция отрисовки таблицы
+function renderTable() {
+    const resultTable = document.getElementById('result-table');
+    const resultBody = document.getElementById('result-body');
+    resultBody.innerHTML = '';  // Очистить таблицу перед добавлением новых данных
+
+    fileData.forEach(file => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${file.name}</td>
+            <td>${file.size}</td>
+            <td>${file.resolution}</td>
+            <td>${file.colorDepth}</td>
+            <td>${file.compression}</td>
+        `;
+        resultBody.appendChild(row);
+    });
+
+    resultTable.style.display = 'table';
+}
+
+// Функция сортировки
+let sortOrder = 1; // 1 для возрастания, -1 для убывания
+
+function sortTable(field) {
+    if (field === 'size') {
+        fileData.sort((a, b) => sortOrder * (a.width * a.height - b.width * b.height));
+    } else if (field === 'name') {
+        fileData.sort((a, b) => sortOrder * a.name.localeCompare(b.name));
+    } else if (field === 'resolution') {
+        fileData.sort((a, b) => sortOrder * (parseInt(a.resolution) - parseInt(b.resolution)));
+    } else if (field === 'colorDepth') {
+        fileData.sort((a, b) => sortOrder * (parseInt(a.colorDepth) - parseInt(b.colorDepth)));
+    } else if (field === 'compression') {
+        fileData.sort((a, b) => sortOrder * a.compression.localeCompare(b.compression));
+    }
+
+    sortOrder *= -1; // Меняем порядок сортировки на противоположный
+    renderTable(); // Перерисовка таблицы после сортировки
+}
+</script>
+
+</body>
+</html>
